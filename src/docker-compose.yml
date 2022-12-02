@@ -9,6 +9,22 @@ services:
      - "27017:27017"
     volumes:
      - mongo_data:/data/db
+  redis:
+    image: redis
+    restart: always
+    container_name: redis
+    ports:
+     - "6379:6379"
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    restart: always
+    ports:
+     - "8080:8000"
+     - "9000:9000"
+    volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+     - portainer_data:/data
 
   catalog.api:
     image: ${DOCKER_REGISTRY-}catalogapi
@@ -18,11 +34,24 @@ services:
       dockerfile: Services/Catalog/Catalog.API/Dockerfile
     environment:
      - ASPNETCORE_ENVIRONMENT=Development
-     - "DatabaseSettings:ConnectionString=mongodb://mongo:27017"
+     - "Database:ConnectionString=mongodb://mongo:27017"
     depends_on:
      - mongo
     ports:
      - "8080:80"
-     - "8081:443"
+     #- "8081:443"
+  basket.api:
+    image: ${DOCKER_REGISTRY-}basketapi
+    container_name: basket.api
+    build:
+      context: .
+      dockerfile: Services/Basket/Basket.API/Dockerfile
+    environment:
+    - "ConnectionStrings:Redis=redis:6379"
+    depends_on:
+     - redis
+
+
 volumes:
   mongo_data:
+  portainer_data:
