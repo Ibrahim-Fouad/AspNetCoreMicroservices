@@ -20,12 +20,25 @@ services:
     container_name: portainer
     restart: always
     ports:
-     - "8080:8000"
+     - "8070:8000"
      - "9000:9000"
     volumes:
      - /var/run/docker.sock:/var/run/docker.sock
      - portainer_data:/data
-
+  postgres:
+    image: postgres
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: admin
+      POSTGRES_DB: discountDb
+    ports:
+      - "5432:5432"    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+        
+      
   catalog.api:
     image: ${DOCKER_REGISTRY-}catalogapi
     container_name: catalog.api
@@ -38,8 +51,8 @@ services:
     depends_on:
      - mongo
     ports:
-     - "8080:80"
-     #- "8081:443"
+     - "5000:80"
+
   basket.api:
     image: ${DOCKER_REGISTRY-}basketapi
     container_name: basket.api
@@ -47,11 +60,44 @@ services:
       context: .
       dockerfile: Services/Basket/Basket.API/Dockerfile
     environment:
+    - ASPNETCORE_ENVIRONMENT=Development
     - "ConnectionStrings:Redis=redis:6379"
+    - "Grpc:ServerUrl=http://discount.grpc"
     depends_on:
      - redis
+    ports:
+     - "5001:80"
+
+  discount.api:
+    image: ${DOCKER_REGISTRY-}discountapi
+    build:
+      context: .
+      dockerfile: Services/Discount/Discount.API/Dockerfile
+    environment:
+     - "ConnectionStrings:DiscountDb=Host=postgres;Port=5432;User ID=admin;Password=password;Database=discountDb"
+    depends_on:
+    - postgres
+    ports:
+    - "5002:80"
+
+  discount.grpc:
+    image: ${DOCKER_REGISTRY-}discountgrpc
+    build:
+      context: .
+      dockerfile: Services/Discount/Discount.Grpc/Dockerfile
+    environment:
+    - "ConnectionStrings:DiscountDb=Host=postgres;Port=5432;User ID=admin;Password=password;Database=discountDb"
+    depends_on:
+     - postgres
+    ports:
+     - "5003:80"
 
 
 volumes:
   mongo_data:
   portainer_data:
+  postgres_data:
+
+
+
+
